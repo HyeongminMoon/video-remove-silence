@@ -183,7 +183,7 @@ else:
 cnt = 0
 for path in paths:
     cnt+=1
-    print(cnt, path.split('/')[-1], end = '\r')
+    print(cnt, path.split('/')[-1])
     silences, including_end = find_silences(path)
 
     total_duration = sum(( end-start for start, end in silences ))
@@ -215,7 +215,7 @@ for path in paths:
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     
-    dst = save_dir + path.split('/')[-1]
+    dst = save_dir + path.split('files')[-1]
     out_wav = wave.open(dst , 'wb')
     # out_wav = wave.open(audio_track.name, 'wb')
     size = wav.getnframes()
