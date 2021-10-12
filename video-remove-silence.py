@@ -11,12 +11,11 @@ import tempfile
 import wave
 import glob
 
-import ffprobe
 from pydub import AudioSegment
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('path', type=str, help='path to video')
+parser.add_argument('--path', type=str, default='files', help='path to video')
 parser.add_argument('--threshold-level', type=float, default=-35, help='threshold level in dB')
 parser.add_argument('--threshold-duration', type=float, default=0.2, help='threshold duration in seconds')
 parser.add_argument('--constant', type=float, default=0, help='duration constant transform value')
@@ -29,36 +28,6 @@ args = parser.parse_args()
 import json
 from subprocess import check_output
 
-def get_media_info(filename, print_result=True):
-    """
-    Returns:
-        result = dict with audio info where:
-        result['format'] contains dict of tags, bit rate etc.
-        result['streams'] contains a dict per stream with sample rate, channels etc.
-    """
-    result = check_output(['ffprobe',
-                            '-hide_banner', '-loglevel', 'panic',
-                            '-show_format',
-                            '-show_streams',
-                            '-of',
-                            'json', filename])
-
-    result = json.loads(result)
-
-    if print_result:
-        print('\nFormat')
-
-        for key, value in result['format'].items():
-            print('   ', key, ':', value)
-
-        print('\nStreams')
-        for stream in result['streams']:
-            for key, value in stream.items():
-                print('   ', key, ':', value)
-
-        print('\n')
-
-    return result
 
 def find_silences(filename):
     global args
@@ -156,10 +125,6 @@ def find_silences(filename):
 
     return silence_regions, including_end
 
-def extract_audio(input_filename, output_filename):
-    command = [ 'ffmpeg', '-i', input_filename, '-acodec', 'pcm_s16le', '-f', 'wav', '-y', output_filename ]
-    subprocess.run(command, stderr=subprocess.PIPE).check_returncode()
-
 def transform_duration(duration):
     global args
     return args.constant + args.sublinear * math.log(duration + 1) + args.linear * duration
@@ -217,10 +182,9 @@ else:
     paths = [args.path]
 cnt = 0
 for path in paths:
-    extract_audio(path, audio_file.name)
     cnt+=1
     print(cnt, path.split('/')[-1], end = '\r')
-    silences, including_end = find_silences(audio_file.name)
+    silences, including_end = find_silences(path)
 
     total_duration = sum(( end-start for start, end in silences ))
     # print(silences)
@@ -228,8 +192,6 @@ for path in paths:
     if len(silences) == 0:
         print('Everything is fine')
         sys.exit(0)
-    dic = get_media_info(path, False)
-    duration = float(dic['format']['duration'])
     
     # print('Found {} gaps, {:.1f} seconds total'.format(len(silences), total_duration))
     regions = []
@@ -239,16 +201,16 @@ for path in paths:
         regions.append((silence[0], silence[1], True))
         regions.append((silence[1], next_silence[0], False))
     if including_end:
-        regions.append((silences[-1][0], duration, True))
+        regions.append((silences[-1][0], None, True))
     else:
         regions.append((silences[-1][0], silences[-1][1], True))
-        regions.append((silences[-1][1], duration, False))
+        regions.append((silences[-1][1], None, False))
     
-    frame_rate = float(dic['streams'][0]['sample_rate'])
+    frame_rate = 44100
     # audio_track = tempfile.NamedTemporaryFile(delete=False)
     # audio_track.close()
     
-    wav = wave.open(audio_file.name)
+    wav = wave.open(path)
     save_dir = os.path.join(os.getcwd(), 'result')
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
