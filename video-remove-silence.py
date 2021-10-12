@@ -211,11 +211,12 @@ for path in paths:
     # audio_track.close()
     
     wav = wave.open(path)
-    save_dir = os.path.join(os.getcwd(), 'result')
+    save_dir = os.path.join(os.getcwd(), 'result/')
     if not os.path.isdir(save_dir):
         os.mkdir(save_dir)
     
-    out_wav = wave.open(os.path.join(save_dir, path.split('/')[-1]) , 'wb')
+    dst = save_dir + path.split('/')[-1]
+    out_wav = wave.open(dst , 'wb')
     # out_wav = wave.open(audio_track.name, 'wb')
     size = wav.getnframes()
     channels = wav.getnchannels()
@@ -245,10 +246,10 @@ for path in paths:
     
     # encoder.stdin.close()
     seg = AudioSegment.silent(duration=300)
-    song = AudioSegment.from_wav(os.path.join(save_dir, path.split('/')[-1]))
+    song = AudioSegment.from_wav(dst)
     final_song = seg + song + seg
     
-    final_song.export(os.path.join(save_dir, path.split('/')[-1]), format="wav")
+    final_song.export(dst, format="wav")
 
     # print()
 #     exit()
